@@ -14,10 +14,10 @@ import (
 	"github.com/brave-intl/bat-go/utils/altcurrency"
 	"github.com/brave-intl/bat-go/utils/prompt"
 	"github.com/brave-intl/bat-go/utils/vaultsigner"
-	"github.com/satori/go.uuid"
+	uuid "github.com/satori/go.uuid"
 	"github.com/shopspring/decimal"
 	"golang.org/x/crypto/ed25519"
-	"gopkg.in/square/go-jose.v2"
+	jose "gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/cryptosigner"
 )
 
@@ -49,6 +49,8 @@ type promotionInfo struct {
 	Priority                  int       `json:"priority"`
 	Active                    bool      `json:"active"`
 	MinimumReconcileTimestamp int64     `json:"minimumReconcileTimestamp"`
+	Type                      string    `json:"type"`
+	ProtocolVersion           int       `json:"protocolVersion"`
 }
 
 type grantRegistration struct {
@@ -196,7 +198,7 @@ func main() {
 	}
 	var grantReg grantRegistration
 	grantReg.Grants = grants
-	grantReg.Promotions = []promotionInfo{{ID: promotionUUID, Priority: 0, Active: false, MinimumReconcileTimestamp: maturityDate.Unix() * 1000}}
+	grantReg.Promotions = []promotionInfo{{ID: promotionUUID, Priority: 0, Active: false, MinimumReconcileTimestamp: maturityDate.Unix() * 1000, Type: *grantType, ProtocolVersion: 4}}
 	serializedGrants, err := json.Marshal(grantReg)
 	if err != nil {
 		log.Fatalln(err)

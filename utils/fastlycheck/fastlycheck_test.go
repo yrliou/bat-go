@@ -28,27 +28,26 @@ func Test_Validate(t *testing.T) {
 	req := httptest.NewRequest("GET", "/anything", nil)
 
 	setHeader := func(value string) {
-		fmt.Println(value)
 		req.Header.Set(FastlyTokenHeader, value)
 	}
 
-	if Validate(req) {
+	if Validate(req) == nil {
 		finish(true, "a token should not be set")
 	}
 	setHeader("")
-	if Validate(req) {
+	if Validate(req) == nil {
 		finish(true, "an empty token is not allowed")
 	}
 	setHeader(uuid.NewV4().String())
-	if Validate(req) {
+	if Validate(req) == nil {
 		finish(true, "incorrect tokens will not be allowed")
 	}
 	setHeader(fmt.Sprintf("Bearer %s", token1))
-	if Validate(req) {
+	if Validate(req) == nil {
 		finish(true, "bearer tokens are not used")
 	}
 	setHeader(token1)
-	if !Validate(req) {
+	if Validate(req) != nil {
 		finish(true, "matching tokens should pass")
 	}
 	finish(false, "")

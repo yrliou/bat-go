@@ -1,6 +1,7 @@
 package fastlycheck
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/brave-intl/bat-go/middleware"
@@ -11,8 +12,12 @@ var (
 	FastlyTokenHeader  = "fastly-token"
 )
 
-func Validate(r *http.Request) bool {
+func Validate(r *http.Request) error {
 	list := middleware.SplitTokenList(FastlyTokenListKey)
 	header := r.Header.Get(FastlyTokenHeader)
-	return middleware.IsSimpleTokenValid(list, header)
+	valid := middleware.IsSimpleTokenValid(list, header)
+	if !valid {
+		return errors.New("an invalid token was passed")
+	}
+	return nil
 }

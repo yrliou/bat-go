@@ -10,6 +10,7 @@ import (
 
 	"github.com/asaskevich/govalidator"
 	"github.com/brave-intl/bat-go/middleware"
+	"github.com/brave-intl/bat-go/utils/fastlycheck"
 	"github.com/brave-intl/bat-go/utils/handlers"
 	"github.com/brave-intl/bat-go/utils/httpsignature"
 	"github.com/go-chi/chi"
@@ -61,6 +62,11 @@ type PromotionsResponse struct {
 // GetAvailablePromotions is the handler for getting available promotions
 func GetAvailablePromotions(service *Service) handlers.AppHandler {
 	return handlers.AppHandler(func(w http.ResponseWriter, r *http.Request) *handlers.AppError {
+		err := fastlycheck.Validate(r)
+		if err != nil {
+			return handlers.WrapError("Unauthorized", err, http.StatusForbidden)
+		}
+
 		paymentID := r.URL.Query().Get("paymentId")
 
 		if len(paymentID) == 0 || !govalidator.IsUUIDv4(paymentID) {
@@ -82,7 +88,7 @@ func GetAvailablePromotions(service *Service) handlers.AppHandler {
 
 		promotions, err := service.GetAvailablePromotions(r.Context(), id)
 		if err != nil {
-			return handlers.WrapError("Error getting available promotions", err)
+			return handlers.WrapError("Error getting available promotions", err, 0)
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -110,13 +116,13 @@ func ClaimPromotion(service *Service) handlers.AppHandler {
 		limit := int64(1024 * 1024 * 10) // 10MiB
 		body, err := ioutil.ReadAll(io.LimitReader(r.Body, limit))
 		if err != nil {
-			return handlers.WrapError("Error reading body", err)
+			return handlers.WrapError("Error reading body", err, 0)
 		}
 
 		var req ClaimRequest
 		err = json.Unmarshal(body, &req)
 		if err != nil {
-			return handlers.WrapError("Error unmarshalling body", err)
+			return handlers.WrapError("Error unmarshalling body", err, 0)
 		}
 		_, err = govalidator.ValidateStruct(req)
 		if err != nil {
@@ -125,7 +131,7 @@ func ClaimPromotion(service *Service) handlers.AppHandler {
 
 		keyID, err := middleware.GetKeyID(r.Context())
 		if err != nil {
-			return handlers.WrapError("Error looking up http signature info", err)
+			return handlers.WrapError("Error looking up http signature info", err, 0)
 		}
 		if req.PaymentID.String() != keyID {
 			return &handlers.AppError{
@@ -159,7 +165,7 @@ func ClaimPromotion(service *Service) handlers.AppHandler {
 
 		claimID, err := service.ClaimPromotionForWallet(r.Context(), pID, req.PaymentID, req.BlindedCreds)
 		if err != nil {
-			return handlers.WrapError("Error claiming promotion", err)
+			return handlers.WrapError("Error claiming promotion", err, 0)
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -200,7 +206,7 @@ func GetClaim(service *Service) handlers.AppHandler {
 
 		claim, err := service.datastore.GetClaimCreds(id)
 		if err != nil {
-			return handlers.WrapError("Error getting claim", err)
+			return handlers.WrapError("Error getting claim", err, 0)
 		}
 
 		if claim == nil {

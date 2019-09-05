@@ -12,8 +12,13 @@ type bearerTokenKey struct{}
 
 var (
 	// TokenList is the list of tokens that are accepted as valid
-	TokenList = strings.Split(os.Getenv("TOKEN_LIST"), ",")
+	TokenList = SplitTokenList("TOKEN_LIST")
 )
+
+// SplitTokenList splits a string from an env var by a given delimiter
+func SplitTokenList(tokenKey string) []string {
+	return strings.Split(os.Getenv(tokenKey), ",")
+}
 
 // BearerToken is a middleware that adds the bearer token included in a request's headers to context
 func BearerToken(next http.Handler) http.Handler {
@@ -30,7 +35,8 @@ func BearerToken(next http.Handler) http.Handler {
 	})
 }
 
-func isSimpleTokenValid(list []string, token string) bool {
+// IsSimpleTokenValid checks that the token in question exists in the list provided
+func IsSimpleTokenValid(list []string, token string) bool {
 	if token == "" {
 		return false
 	}
@@ -49,7 +55,7 @@ func SimpleTokenAuthorizedOnly(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		token, ok := ctx.Value(bearerTokenKey{}).(string)
-		if !ok || !isSimpleTokenValid(TokenList, token) {
+		if !ok || !IsSimpleTokenValid(TokenList, token) {
 			http.Error(w, http.StatusText(403), 403)
 			return
 		}

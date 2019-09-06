@@ -18,6 +18,11 @@ type Info struct {
 	AltCurrency *altcurrency.AltCurrency `json:"altcurrency" valid:"-"`
 	PublicKey   string                   `json:"publicKey,omitempty" valid:"hexadecimal,optional" db:"public_key"`
 	LastBalance *Balance                 `json:"balances,omitempty" valid:"-"`
+	CreatedAt   time.Time                `json:"createdAt"`
+}
+
+func (wallet Info) IsNew() bool {
+	return time.Now().AddDate(0, 0, -1).Before(wallet.CreatedAt)
 }
 
 // TransactionInfo contains information about a transaction like the denomination, amount in probi,

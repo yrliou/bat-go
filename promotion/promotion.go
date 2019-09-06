@@ -49,6 +49,8 @@ func (service *Service) GetOrCreateWallet(ctx context.Context, walletID uuid.UUI
 	return wallet, nil
 }
 
+func (service *Service)
+
 // GetAvailablePromotions first looks up the wallet and then retrieves available promotions
 func (service *Service) GetAvailablePromotions(
 	ctx context.Context,

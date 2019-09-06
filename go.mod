@@ -3,6 +3,7 @@ module github.com/brave-intl/bat-go
 go 1.12
 
 require (
+	github.com/ahl5esoft/golang-underscore v2.0.0+incompatible // indirect
 	github.com/armon/go-radix v1.0.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20180720115003-f9ffefc3facf
 	github.com/btcsuite/btcutil v0.0.0-20190316010144-3ac1210f4b38

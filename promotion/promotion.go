@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/brave-intl/bat-go/utils/ads"
 	"github.com/brave-intl/bat-go/wallet"
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
@@ -49,10 +50,43 @@ func (service *Service) GetOrCreateWallet(ctx context.Context, walletID uuid.UUI
 }
 
 // GetAvailablePromotions first looks up the wallet and then retrieves available promotions
-func (service *Service) GetAvailablePromotions(ctx context.Context, walletID uuid.UUID) ([]Promotion, error) {
+func (service *Service) GetAvailablePromotions(
+	ctx context.Context,
+	walletID uuid.UUID,
+	availableTypes map[string]bool,
+) ([]Promotion, error) {
 	wallet, err := service.GetOrCreateWallet(ctx, walletID)
 	if err != nil {
 		return []Promotion{}, err
 	}
-	return service.datastore.GetAvailablePromotionsForWallet(wallet)
+	promotions, err := service.datastore.GetAvailablePromotionsForWallet(wallet)
+	if err != nil {
+		return []Promotion{}, err
+	}
+	filtered := []Promotion{}
+	for _, promotion := range promotions {
+		if availableTypes[promotion.Type] {
+			filtered = append(filtered, promotion)
+		}
+	}
+	return filtered, nil
+}
+
+func (service *Service) PromotionTypesAvailable(countryCode string) (map[string]bool, error) {
+	cohorts := map[string]bool{
+		"control": true,
+	}
+	countriesAdsAvailable, err := ads.AvailableIn()
+	if err != nil {
+		return cohorts, err
+	}
+	for _, countryAdsAvailable := range countriesAdsAvailable {
+		if countryCode == countryAdsAvailable {
+			cohorts["ads"] = true
+		}
+	}
+	if len(cohorts) == 0 {
+		cohorts["ugp"] = true
+	}
+	return cohorts, nil
 }

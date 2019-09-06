@@ -306,7 +306,6 @@ func (pg *Postgres) GetAvailablePromotionsForWallet(wallet *wallet.Info) ([]Prom
 	if err != nil {
 		return promotions, err
 	}
-
 	return promotions, nil
 }
 

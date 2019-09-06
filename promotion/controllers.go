@@ -86,7 +86,12 @@ func GetAvailablePromotions(service *Service) handlers.AppHandler {
 			panic(err) // Should not be possible
 		}
 
-		promotions, err := service.GetAvailablePromotions(r.Context(), id)
+		countryCode := r.Header.Get("Fastly-GeoIP-CountryCode")
+		promotionTypesAvailable, err := service.PromotionTypesAvailable(countryCode)
+		if err != nil {
+			return handlers.WrapError("Unable to check promotion types", err, 500)
+		}
+		promotions, err := service.GetAvailablePromotions(r.Context(), id, promotionTypesAvailable)
 		if err != nil {
 			return handlers.WrapError("Error getting available promotions", err, 0)
 		}

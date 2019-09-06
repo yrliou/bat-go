@@ -49,8 +49,6 @@ func (service *Service) GetOrCreateWallet(ctx context.Context, walletID uuid.UUI
 	return wallet, nil
 }
 
-func (service *Service)
-
 // GetAvailablePromotions first looks up the wallet and then retrieves available promotions
 func (service *Service) GetAvailablePromotions(
 	ctx context.Context,
@@ -60,6 +58,9 @@ func (service *Service) GetAvailablePromotions(
 	wallet, err := service.GetOrCreateWallet(ctx, walletID)
 	if err != nil {
 		return []Promotion{}, err
+	}
+	if wallet.IsNew() {
+		return []Promotion{}, errors.New("wallet is too new to receive grants")
 	}
 	promotions, err := service.datastore.GetAvailablePromotionsForWallet(wallet)
 	if err != nil {

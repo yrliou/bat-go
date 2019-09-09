@@ -50,6 +50,16 @@ func TestFromCompactJWS(t *testing.T) {
 }
 
 func TestVerifyAndConsume(t *testing.T) {
+	defer func(
+		a string,
+		b string,
+	) {
+		GrantSignatorPublicKeyHex = a
+		SettlementDestination = b
+	}(
+		GrantSignatorPublicKeyHex,
+		SettlementDestination,
+	)
 	GrantSignatorPublicKeyHex = "f03bccbcd2314d721f2375a669e7b817ef61067ab18a5da5df5b24b73feba8b7"
 	SettlementDestination = "foo@bar.com"
 	refreshBalance = false

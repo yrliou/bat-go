@@ -148,6 +148,7 @@ func submit(req *http.Request) ([]byte, *http.Response, error) {
 	if err != nil {
 		return nil, resp, err
 	}
+	defer resp.Body.Close()
 
 	log.WithFields(log.Fields{
 		"path": "github.com/brave-intl/bat-go/wallet/provider/uphold",

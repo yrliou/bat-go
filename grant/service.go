@@ -4,14 +4,18 @@ import (
 	"encoding/hex"
 	"errors"
 	"os"
+	"time"
 
 	"github.com/brave-intl/bat-go/utils/altcurrency"
 	"github.com/brave-intl/bat-go/utils/httpsignature"
 	"github.com/brave-intl/bat-go/wallet"
+	"github.com/brave-intl/bat-go/wallet/provider"
 	"github.com/brave-intl/bat-go/wallet/provider/uphold"
 	"github.com/garyburd/redigo/redis"
 	raven "github.com/getsentry/raven-go"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/satori/go.uuid"
+	"github.com/shopspring/decimal"
 	"golang.org/x/crypto/ed25519"
 )
 
@@ -49,6 +53,13 @@ var (
 			Help: "Number of grants redeemed since start.",
 		},
 		[]string{"promotionId"},
+	)
+	fundsReceivedCounter = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "funds_received_count",
+			Help: "a count of the number of bat added to the settlement wallet",
+		},
+		[]string{},
 	)
 )
 
@@ -136,6 +147,7 @@ func InitService(datastore Datastore, redisPool *redis.Pool) (*Service, error) {
 
 		prometheus.MustRegister(claimedGrantsCounter)
 		prometheus.MustRegister(redeemedGrantsCounter)
+		prometheus.MustRegister(fundsReceivedCounter)
 	}
 
 	return gs, nil
@@ -189,4 +201,78 @@ func (gs *Service) Collect(ch chan<- prometheus.Metric) {
 		prometheus.GaugeValue,
 		spendable,
 	)
+
+	if isMasterMachine() {
+		gs.pullWalletMetrics()
+	}
+}
+
+func isMasterMachine() bool {
+	return true
+}
+
+func (gs *Service) pullWalletMetrics() error {
+	var lastBalance decimal.Decimal
+	walletMetricKey := "settlement-wallet:balance"
+	conn := gs.redisPool.Get()
+
+	err := conn.Send("GET", walletMetricKey)
+	if err != nil {
+		return err
+	}
+
+	lastBalanceCachedInterface, err := conn.Receive()
+	if err != nil {
+		return err
+	}
+
+	lastBalanceCached := lastBalanceCachedInterface.(string)
+	currentBalance, err := GetSettlementBalance()
+	if err != nil {
+		return err
+	}
+
+	if lastBalanceCached == "" {
+		lastBalance = currentBalance
+	} else {
+		lastBalance, err = decimal.NewFromString(lastBalanceCached)
+		if err != nil {
+			return err
+		}
+	}
+
+	delta, _ := currentBalance.Sub(lastBalance).Float64()
+	fundsReceivedCounter.With(prometheus.Labels{}).Add(delta)
+
+	conn.Send("SET", walletMetricKey, currentBalance.String())
+	conn.Do("EXEC")
+	return nil
+}
+
+func GetSettlementBalance() (decimal.Decimal, error) {
+	zero, err := decimal.NewFromString("0")
+	if err != nil {
+		return zero, err
+	}
+	alt, err := altcurrency.FromString("BAT")
+	if err != nil {
+		return zero, err
+	}
+	settlementWallet, err := provider.GetWallet(wallet.Info{
+		ID:          uuid.NewV4().String(),
+		Provider:    "uphold",
+		ProviderID:  SettlementDestination,
+		PublicKey:   GrantSignatorPublicKeyHex,
+		AltCurrency: &alt,
+		LastBalance: nil,
+		CreatedAt:   time.Unix(0, 0),
+	})
+	if err != nil {
+		return zero, err
+	}
+	balance, err := settlementWallet.GetBalance(true)
+	if err != nil {
+		return zero, err
+	}
+	return balance.TotalProbi, nil
 }

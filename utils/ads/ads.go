@@ -23,8 +23,7 @@ func AvailableIn() ([]string, error) {
 		return adsAvailable, nil
 	}
 	origin := os.Getenv("ADS_URL")
-	url := fmt.Sprintf("%s%s", origin, "/v1/geoCode")
-	resp, err := http.Get(url)
+	resp, err := http.Get(origin + "/v1/geoCode")
 	if err != nil {
 		return adsAvailable, err
 	}

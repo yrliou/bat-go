@@ -3,9 +3,10 @@ package cbr
 import (
 	"context"
 	"errors"
-	"os"
+	"fmt"
 
 	"github.com/brave-intl/bat-go/utils/clients"
+	appctx "github.com/brave-intl/bat-go/utils/context"
 )
 
 // Client abstracts over the underlying client
@@ -23,13 +24,22 @@ type HTTPClient struct {
 }
 
 // New returns a new HTTPClient, retrieving the base URL from the environment
-func New() (*HTTPClient, error) {
+func New(ctx context.Context) (*HTTPClient, error) {
 	serverEnvKey := "CHALLENGE_BYPASS_SERVER"
-	serverURL := os.Getenv("CHALLENGE_BYPASS_SERVER")
+	serverURL, err := appctx.GetConfValue(ctx, serverEnvKey)
+	if err != nil {
+		return nil, fmt.Errorf("error getting configuration value: %w", err)
+	}
 	if len(serverURL) == 0 {
 		return nil, errors.New(serverEnvKey + " was empty")
 	}
-	client, err := clients.New(serverURL, os.Getenv("CHALLENGE_BYPASS_TOKEN"))
+
+	cbToken, err := appctx.GetConfValue(ctx, "CHALLENGE_BYPASS_TOKEN")
+	if err != nil {
+		return nil, fmt.Errorf("error getting configuration value: %w", err)
+	}
+
+	client, err := clients.New(serverURL, cbToken)
 	if err != nil {
 		return nil, err
 	}

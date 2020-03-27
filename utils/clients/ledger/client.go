@@ -3,10 +3,11 @@ package ledger
 import (
 	"context"
 	"errors"
-	"os"
+	"fmt"
 
 	"github.com/brave-intl/bat-go/utils/altcurrency"
 	"github.com/brave-intl/bat-go/utils/clients"
+	appctx "github.com/brave-intl/bat-go/utils/context"
 	"github.com/brave-intl/bat-go/wallet"
 	uuid "github.com/satori/go.uuid"
 )
@@ -22,13 +23,21 @@ type HTTPClient struct {
 }
 
 // New returns a new HTTPClient, retrieving the base URL from the environment
-func New() (*HTTPClient, error) {
+func New(ctx context.Context) (*HTTPClient, error) {
 	serverEnvKey := "LEDGER_SERVER"
-	serverURL := os.Getenv("LEDGER_SERVER")
+	serverURL, err := appctx.GetConfValue(ctx, serverEnvKey)
+	if err != nil {
+		return nil, fmt.Errorf("error getting configuration value: %w", err)
+	}
 	if len(serverURL) == 0 {
 		return nil, errors.New(serverEnvKey + " was empty")
 	}
-	client, err := clients.New(serverURL, os.Getenv("LEDGER_TOKEN"))
+
+	lToken, err := appctx.GetConfValue(ctx, "LEDGER_TOKEN")
+	if err != nil {
+		return nil, fmt.Errorf("error getting configuration value: %w", err)
+	}
+	client, err := clients.New(serverURL, lToken)
 	if err != nil {
 		return nil, err
 	}

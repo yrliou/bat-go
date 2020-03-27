@@ -6,14 +6,15 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"fmt"
 	"io/ioutil"
 	"log"
-	"os"
 	"strings"
 	"time"
 
 	"errors"
 
+	appctx "github.com/brave-intl/bat-go/utils/context"
 	srv "github.com/brave-intl/bat-go/utils/service"
 	"github.com/brave-intl/bat-go/wallet/provider/uphold"
 	wallet "github.com/brave-intl/bat-go/wallet/service"
@@ -28,7 +29,6 @@ import (
 )
 
 var (
-	voteTopic          = os.Getenv("ENV") + ".payment.vote"
 	kafkaCertNotBefore = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "kafka_cert_not_before",
 		Help: "Date when the kafka certificate becomes valid.",
@@ -65,8 +65,12 @@ func (s *Service) Jobs() []srv.Job {
 	return s.jobs
 }
 
-func readFileFromEnvLoc(env string, required bool) ([]byte, error) {
-	loc := os.Getenv(env)
+func readFileFromEnvLoc(ctx context.Context, env string, required bool) ([]byte, error) {
+	loc, err := appctx.GetConfValue(ctx, env)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get %s: %w", env, err)
+	}
+
 	if len(loc) == 0 {
 		if !required {
 			return []byte{}, nil
@@ -80,26 +84,36 @@ func readFileFromEnvLoc(env string, required bool) ([]byte, error) {
 	return buf, nil
 }
 
-func tlsDialer() (*kafka.Dialer, error) {
-	keyPasswordEnv := "KAFKA_SSL_KEY_PASSWORD"
-	keyPassword := os.Getenv(keyPasswordEnv)
+func tlsDialer(ctx context.Context) (*kafka.Dialer, error) {
+	keyPassword, err := appctx.GetConfValue(ctx, "KAFKA_SSL_KEY_PASSWORD")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get kafka ssl key password: %w", err)
+	}
 
-	caPEM, err := readFileFromEnvLoc("KAFKA_SSL_CA_LOCATION", false)
+	caPEM, err := readFileFromEnvLoc(ctx, "KAFKA_SSL_CA_LOCATION", false)
 	if err != nil {
 		return nil, err
 	}
 
 	certEnv := "KAFKA_SSL_CERTIFICATE"
-	certPEM := []byte(os.Getenv(certEnv))
+	cert, err := appctx.GetConfValue(ctx, certEnv)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get kafka ssl cert: %w", err)
+	}
+	certPEM := []byte(cert)
 	if len(certPEM) == 0 {
-		certPEM, err = readFileFromEnvLoc("KAFKA_SSL_CERTIFICATE_LOCATION", true)
+		certPEM, err = readFileFromEnvLoc(ctx, "KAFKA_SSL_CERTIFICATE_LOCATION", true)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	keyEnv := "KAFKA_SSL_KEY"
-	encryptedKeyPEM := []byte(os.Getenv(keyEnv))
+	key, err := appctx.GetConfValue(ctx, keyEnv)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get kafka ssl key: %w", err)
+	}
+	encryptedKeyPEM := []byte(key)
 
 	// Check to see if KAFKA_SSL_CERTIFICATE includes both certificate and key
 	if certPEM[0] == '{' {
@@ -117,7 +131,7 @@ func tlsDialer() (*kafka.Dialer, error) {
 	}
 
 	if len(encryptedKeyPEM) == 0 {
-		encryptedKeyPEM, err = readFileFromEnvLoc("KAFKA_SSL_KEY_LOCATION", true)
+		encryptedKeyPEM, err = readFileFromEnvLoc(ctx, "KAFKA_SSL_KEY_LOCATION", true)
 		if err != nil {
 			return nil, err
 		}
@@ -183,18 +197,27 @@ func (s *Service) InitCodecs() error {
 }
 
 // InitKafka by creating a kafka writer and creating local copies of codecs
-func (s *Service) InitKafka() error {
-	dialer, err := tlsDialer()
+func (s *Service) InitKafka(ctx context.Context) error {
+	dialer, err := tlsDialer(ctx)
 	if err != nil {
 		return err
 	}
 	s.kafkaDialer = dialer
 
-	kafkaBrokers := os.Getenv("KAFKA_BROKERS")
+	kafkaBrokers, err := appctx.GetConfValue(ctx, "KAFKA_BROKERS")
+	if err != nil {
+		return err
+	}
+
+	env, err := appctx.GetConfValue(ctx, "ENV")
+	if err != nil {
+		return err
+	}
+
 	kafkaWriter := kafka.NewWriter(kafka.WriterConfig{
 		// by default we are waitng for acks from all nodes
 		Brokers:  strings.Split(kafkaBrokers, ","),
-		Topic:    voteTopic,
+		Topic:    fmt.Sprintf("%s.payment.vote", env),
 		Balancer: &kafka.LeastBytes{},
 		Dialer:   dialer,
 		Logger:   kafka.LoggerFunc(log.Printf), // FIXME
@@ -210,13 +233,13 @@ func (s *Service) InitKafka() error {
 }
 
 // InitService creates a service using the passed datastore and clients configured from the environment
-func InitService(datastore Datastore) (*Service, error) {
-	cbClient, err := cbr.New()
+func InitService(ctx context.Context, datastore Datastore) (*Service, error) {
+	cbClient, err := cbr.New(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	walletService, err := wallet.InitService(datastore, nil)
+	walletService, err := wallet.InitService(ctx, datastore, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -241,7 +264,7 @@ func InitService(datastore Datastore) (*Service, error) {
 		},
 	}
 
-	err = service.InitKafka()
+	err = service.InitKafka(ctx)
 	if err != nil {
 		return nil, err
 	}

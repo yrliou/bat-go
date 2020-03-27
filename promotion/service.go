@@ -308,8 +308,8 @@ func (s *Service) InitHotWallet() error {
 }
 
 // InitService creates a service using the passed datastore and clients configured from the environment
-func InitService(datastore Datastore, roDatastore ReadOnlyDatastore) (*Service, error) {
-	cbClient, err := cbr.New()
+func InitService(ctx context.Context, datastore Datastore, roDatastore ReadOnlyDatastore) (*Service, error) {
+	cbClient, err := cbr.New(ctx)
 	if err != nil {
 		return nil, err
 	}

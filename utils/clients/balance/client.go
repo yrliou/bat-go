@@ -3,7 +3,7 @@ package balance
 import (
 	"context"
 	"errors"
-	"os"
+	"fmt"
 
 	"github.com/brave-intl/bat-go/utils/clients"
 	uuid "github.com/satori/go.uuid"
@@ -20,13 +20,22 @@ type HTTPClient struct {
 }
 
 // New returns a new HTTPClient, retrieving the base URL from the environment
-func New() (*HTTPClient, error) {
+func New(ctx context.Context) (*HTTPClient, error) {
 	serverEnvKey := "BALANCE_SERVER"
-	serverURL := os.Getenv(serverEnvKey)
+	serverURL, err := appctx.GetConfValue(ctx, serverEnvKey)
+	if err != nil {
+		return nil, fmt.Errorf("error getting configuration value: %w", err)
+	}
 	if len(serverEnvKey) == 0 {
 		return nil, errors.New(serverEnvKey + " was empty")
 	}
-	client, err := clients.New(serverURL, os.Getenv("BALANCE_TOKEN"))
+
+	bToken, err := appctx.GetConfValue(ctx, "BALANCE_TOKEN")
+	if err != nil {
+		return nil, fmt.Errorf("error getting configuration value: %w", err)
+	}
+
+	client, err := clients.New(serverURL, bToken)
 	if err != nil {
 		return nil, err
 	}

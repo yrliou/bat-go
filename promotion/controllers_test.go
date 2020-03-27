@@ -84,7 +84,7 @@ func (suite *ControllersTestSuite) TestGetPromotions() {
 	pg, err := NewPostgres("", false)
 	suite.Require().NoError(err, "Failed to get postgres conn")
 
-	cbClient, err := cbr.New()
+	cbClient, err := cbr.New(context.Background())
 	suite.Require().NoError(err, "Failed to create challenge bypass client")
 
 	mockCtrl := gomock.NewController(suite.T())
@@ -320,7 +320,7 @@ func (suite *ControllersTestSuite) TestClaimGrant() {
 	pg, err := NewPostgres("", false)
 	suite.Require().NoError(err, "Failed to get postgres conn")
 
-	cbClient, err := cbr.New()
+	cbClient, err := cbr.New(context.Background())
 	suite.Require().NoError(err, "Failed to create challenge bypass client")
 
 	mockCtrl := gomock.NewController(suite.T())

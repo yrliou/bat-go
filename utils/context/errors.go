@@ -69,4 +69,8 @@ var (
 	ErrKafkaSSLKeyPasswordNotInContext = fmt.Errorf("failed to get kafka ssl key password: %w", ErrNotInContext)
 	// ErrKafkaSSLCALocationNotInContext - failed to get from context
 	ErrKafkaSSLCALocationNotInContext = fmt.Errorf("failed to get kafka ssl ca location: %w", ErrNotInContext)
+	// ErrServiceAddrNotInContext - failed to get from context
+	ErrServiceAddrNotInContext = fmt.Errorf("failed to get service address: %w", ErrNotInContext)
+	// ErrServiceRouterNotInContext - failed to get from context
+	ErrServiceRouterNotInContext = fmt.Errorf("failed to get service router: %w", ErrNotInContext)
 )

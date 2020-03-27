@@ -11,10 +11,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
-	jobWorkersCmd.AddCommand(voteDrainJobCmd)
-}
-
 var voteDrainJobCmd = &cobra.Command{
 	Use:   "vote-drain-job",
 	Short: "start up the vote drain job",

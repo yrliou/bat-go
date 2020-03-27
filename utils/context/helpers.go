@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/go-chi/chi"
 	"github.com/rs/zerolog"
 )
 
@@ -15,6 +16,14 @@ func LoggerFromContext(ctx context.Context) (zerolog.Logger, error) {
 		return logger, nil
 	}
 	return zerolog.Logger{}, ErrLoggerNotInContext
+}
+
+// RouterFromContext - get the logger from the context
+func RouterFromContext(ctx context.Context) (chi.Router, error) {
+	if router, ok := ctx.Value(ServiceRouterCTXKey).(chi.Router); ok {
+		return router, nil
+	}
+	return nil, ErrServiceRouterNotInContext
 }
 
 // stringFromContext - generic string from context with custom error
@@ -163,6 +172,11 @@ func KafkaSSLKeyPasswordFromContext(ctx context.Context) (string, error) {
 // KafkaSSLCALocationFromContext - helper to get the uphold http proxy from the context
 func KafkaSSLCALocationFromContext(ctx context.Context) (string, error) {
 	return stringFromContext(ctx, KafkaSSLCALocationCTXKey, ErrKafkaSSLCALocationNotInContext)
+}
+
+// ServiceAddrFromContext - helper to get the service addr from the context
+func ServiceAddrFromContext(ctx context.Context) (string, error) {
+	return stringFromContext(ctx, ServiceAddrCTXKey, ErrServiceAddrNotInContext)
 }
 
 // GetConfValue - get a configuration value...

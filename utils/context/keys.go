@@ -77,6 +77,10 @@ const (
 	KafkaSSLKeyPasswordCTXKey
 	// KafkaSSLCALocationCTXKey - location of the kafka ssl CA
 	KafkaSSLCALocationCTXKey
+	// ServiceAddrCTXKey - service address to listen on
+	ServiceAddrCTXKey
+	// ServiceRouterCTXKey - service's running router
+	ServiceRouterCTXKey
 )
 
 var (
@@ -110,6 +114,8 @@ var (
 		"KAFKA_SSL_KEY_LOCATION":         KafkaSSLKeyLocationCTXKey,
 		"KAFKA_SSL_KEY_PASSWORD":         KafkaSSLKeyPasswordCTXKey,
 		"KAFKA_SSL_CA_LOCATION":          KafkaSSLCALocationCTXKey,
+		"ADDR":                           ServiceAddrCTXKey,
+		"ROUTER":                         ServiceRouterCTXKey,
 	}
 
 	ctxKeyToString = map[ctxKey]string{
@@ -142,6 +148,8 @@ var (
 		KafkaSSLKeyLocationCTXKey:         "KAFKA_SSL_KEY_LOCATION",
 		KafkaSSLKeyPasswordCTXKey:         "KAFKA_SSL_KEY_PASSWORD",
 		KafkaSSLCALocationCTXKey:          "KAFKA_SSL_CA_LOCATION",
+		ServiceAddrCTXKey:                 "ADDR",
+		ServiceRouterCTXKey:               "ROUTER",
 	}
 
 	confToGetFn = map[ctxKey]func(ctx context.Context) (string, error){
@@ -173,5 +181,6 @@ var (
 		KafkaSSLKeyLocationCTXKey:         KafkaSSLKeyLocationFromContext,
 		KafkaSSLKeyPasswordCTXKey:         KafkaSSLKeyPasswordFromContext,
 		KafkaSSLCALocationCTXKey:          KafkaSSLCALocationFromContext,
+		ServiceAddrCTXKey:                 ServiceAddrFromContext,
 	}
 )

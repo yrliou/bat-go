@@ -10,6 +10,10 @@ import (
 )
 
 var (
+	version   string
+	buildTime string
+	commit    string
+
 	databaseURL                 string
 	challengeBypassServer       string
 	ledgerServer                string
@@ -94,6 +98,11 @@ func init() {
 	viper.BindPFlag("kafka-ssl-key-password", rootCmd.Flags().Lookup("kafka-ssl-key-password"))
 	// bind the environment variable incase it comes in that way
 	viper.BindEnv("kafka-ssl-key-password", "KAFKA_SSL_KEY_PASSWORD")
+
+	serveCmd.AddCommand(paymentsCmd)
+	rootCmd.AddCommand(serveCmd)
+	jobWorkersCmd.AddCommand(voteDrainJobCmd)
+	rootCmd.AddCommand(jobWorkersCmd)
 }
 
 var (

@@ -7,6 +7,7 @@ import (
 	appctx "github.com/brave-intl/bat-go/utils/context"
 	"github.com/getsentry/sentry-go"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var (
@@ -15,16 +16,21 @@ var (
 )
 
 func init() {
-	// add job-workers sub command to the root command
-	rootCmd.AddCommand(jobWorkersCmd)
-
 	// add persistent flags for all job-workers
 	// --job-cadence 5s # this indicates 5 seconds between job runs
 	jobWorkersCmd.PersistentFlags().DurationVar(
 		&jobCadence, "job-cadence", 5*time.Second, "This job should run within this frequency")
+	// bind viper to our persistent flag
+	viper.BindPFlag("job-cadence", jobWorkersCmd.Flags().Lookup("job-cadence"))
+	// bind the environment variable incase it comes in that way
+	viper.BindEnv("job-cadence", "JOB_CADENCE")
 	// --job-workers 5 # this indicates the number of workers to run
 	jobWorkersCmd.PersistentFlags().IntVar(
 		&jobWorkers, "job-workers", 1, "This is the number of workers to run")
+	// bind viper to our persistent flag
+	viper.BindPFlag("job-workers", jobWorkersCmd.Flags().Lookup("job-workers"))
+	// bind the environment variable incase it comes in that way
+	viper.BindEnv("job-workers", "JOB_WORKERS")
 }
 
 var jobWorkersCmd = &cobra.Command{
@@ -35,7 +41,7 @@ var jobWorkersCmd = &cobra.Command{
 
 func runJobWorkers(cmd *cobra.Command, args []string) {
 	// setup context and logger first
-	_, logger := setupLogger(context.Background())
+	_, logger := setupLogger(ctx)
 	logger.Info().Msg("starting the job workers...")
 }
 

@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/brave-intl/bat-go/promotion"
-	"github.com/brave-intl/bat-go/wallet"
+	"github.com/brave-intl/bat-go/utils/wallet"
 	uuid "github.com/satori/go.uuid"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/suite"
@@ -36,6 +36,14 @@ func (suite *PostgresTestSuite) SetupSuite() {
 }
 
 func (suite *PostgresTestSuite) SetupTest() {
+	suite.CleanDB()
+}
+
+func (suite *PostgresTestSuite) TearDownTest() {
+	suite.CleanDB()
+}
+
+func (suite *PostgresTestSuite) CleanDB() {
 	tables := []string{"claim_creds", "claims", "wallets", "issuers", "promotions"}
 
 	pg, err := NewPostgres("", false)

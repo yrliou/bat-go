@@ -17,6 +17,7 @@ import (
 	"github.com/brave-intl/bat-go/utils/clients/reputation"
 	"github.com/brave-intl/bat-go/utils/handlers"
 	srv "github.com/brave-intl/bat-go/utils/service"
+	"github.com/brave-intl/bat-go/wallet"
 	"github.com/getsentry/sentry-go"
 	"github.com/go-chi/chi"
 	chiware "github.com/go-chi/chi/middleware"
@@ -108,7 +109,7 @@ func setupRouter(ctx context.Context, logger *zerolog.Logger) (context.Context, 
 	// add runnable jobs:
 	jobs = append(jobs, grantService.Jobs()...)
 
-	var roPg promotion.ReadOnlyDatastore
+	var roPg *promotion.Postgres
 	pg, err := promotion.NewPostgres("", true, "promotion_db")
 	if err != nil {
 		sentry.CaptureException(err)
@@ -154,10 +155,33 @@ func setupRouter(ctx context.Context, logger *zerolog.Logger) (context.Context, 
 
 		// add runnable jobs:
 		jobs = append(jobs, paymentService.Jobs()...)
-
 		r.Mount("/v1/orders", payment.Router(paymentService))
 		r.Mount("/v1/votes", payment.VoteRouter(paymentService))
 	}
+
+	var roWalletPg *wallet.Postgres
+	walletPg, err := wallet.NewPostgres("", true)
+	if err != nil {
+		sentry.CaptureException(err)
+		sentry.Flush(time.Second * 2)
+		log.Panic().Err(err).Msg("Must be able to init postgres connection to start")
+	}
+	if len(roDB) > 0 {
+		roWalletPg, err = wallet.NewPostgres(roDB, false)
+		if err != nil {
+			sentry.CaptureException(err)
+			sentry.Flush(time.Second * 2)
+			log.Error().Err(err).Msg("Could not start reader postgres connection")
+		}
+	}
+	walletService, err := wallet.InitService(walletPg, roWalletPg)
+	if err != nil {
+		sentry.CaptureException(err)
+		sentry.Flush(time.Second * 2)
+		log.Panic().Err(err).Msg("Wallet service initialization failed")
+	}
+
+	r.Mount("/v1/wallet", wallet.Router(walletService))
 	r.Get("/metrics", middleware.Metrics())
 
 	log.Printf("server version/buildtime = %s %s %s", version, commit, buildTime)

@@ -19,7 +19,7 @@ func TestWrapError(t *testing.T) {
 		t.Fatalf("AppError holds error pointer stable, got = %v, want = %v", got, want)
 	}
 
-	appErr := AppError{
+	appErr := &AppError{
 		Code: 1,
 	}
 	err = WrapError(appErr, "", 0)
@@ -27,13 +27,13 @@ func TestWrapError(t *testing.T) {
 		t.Fatalf("AppError.Code should be original error value got %v, want %v", got, want)
 	}
 
-	appErr = AppError{}
+	appErr = &AppError{}
 	err = WrapError(appErr, "", 5)
 	if got, want := err.Code, 5; got != want {
 		t.Fatalf("AppError.Code should be provided default value got %v, want %v", got, want)
 	}
 
-	appErr = AppError{
+	appErr = &AppError{
 		Message: "a",
 	}
 	err = WrapError(appErr, "b", 0)
@@ -43,7 +43,7 @@ func TestWrapError(t *testing.T) {
 	if got, want := err.Error(), "error: b: a"; got != want {
 		t.Fatalf("AppError.Message wraps error messages got %v, want %v", got, want)
 	}
-	err = WrapError(*err, "c", 0)
+	err = WrapError(err, "c", 0)
 	if got, want := err.Message, "c: b: a"; got != want {
 		t.Fatalf("AppError.Error() wraps error messages recursively got %v, want %v", got, want)
 	}
@@ -51,7 +51,7 @@ func TestWrapError(t *testing.T) {
 		t.Fatalf("AppError.Error() wraps error messages recursively got %v, want %v", got, want)
 	}
 
-	appErr = AppError{
+	appErr = &AppError{
 		Message: "start",
 		Cause:   errors.New("because"),
 	}

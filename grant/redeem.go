@@ -8,9 +8,9 @@ import (
 
 	"github.com/brave-intl/bat-go/utils/altcurrency"
 	errorutils "github.com/brave-intl/bat-go/utils/errors"
-	"github.com/brave-intl/bat-go/wallet"
-	"github.com/brave-intl/bat-go/wallet/provider"
-	"github.com/brave-intl/bat-go/wallet/provider/uphold"
+	"github.com/brave-intl/bat-go/utils/wallet"
+	"github.com/brave-intl/bat-go/utils/wallet/provider"
+	"github.com/brave-intl/bat-go/utils/wallet/provider/uphold"
 	"github.com/getsentry/sentry-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
@@ -89,7 +89,7 @@ func (service *Service) Consume(ctx context.Context, walletInfo wallet.Info, tra
 		// 1. Enforce transaction checks and verify transaction signature
 		// NOTE for uphold provider we currently check against user provided publicKey
 		//      thus this check does not protect us from a valid fake signature
-		txInfo, err := userWallet.VerifyAnonCardTransaction(transaction)
+		txInfo, err := userWallet.VerifyAnonCardTransaction(transaction, uphold.SettlementDestination)
 		if err != nil {
 			return nil, err
 		}

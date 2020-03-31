@@ -8,7 +8,7 @@ import (
 	"github.com/brave-intl/bat-go/datastore/grantserver"
 	"github.com/brave-intl/bat-go/promotion"
 	"github.com/brave-intl/bat-go/utils/altcurrency"
-	"github.com/brave-intl/bat-go/wallet"
+	"github.com/brave-intl/bat-go/utils/wallet"
 	uuid "github.com/satori/go.uuid"
 	"github.com/shopspring/decimal"
 

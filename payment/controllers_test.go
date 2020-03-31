@@ -21,9 +21,9 @@ import (
 	"github.com/brave-intl/bat-go/utils/clients/cbr"
 	mockcb "github.com/brave-intl/bat-go/utils/clients/cbr/mock"
 	"github.com/brave-intl/bat-go/utils/httpsignature"
+	walletutils "github.com/brave-intl/bat-go/utils/wallet"
+	"github.com/brave-intl/bat-go/utils/wallet/provider/uphold"
 	"github.com/brave-intl/bat-go/wallet"
-	"github.com/brave-intl/bat-go/wallet/provider/uphold"
-	walletservice "github.com/brave-intl/bat-go/wallet/service"
 	"github.com/go-chi/chi"
 	"github.com/golang/mock/gomock"
 	uuid "github.com/satori/go.uuid"
@@ -297,7 +297,7 @@ func (suite *ControllersTestSuite) TestGetTransactions() {
 }
 
 func fundWallet(t *testing.T, destWallet *uphold.Wallet, amount decimal.Decimal) {
-	var donorInfo wallet.Info
+	var donorInfo walletutils.Info
 	donorInfo.Provider = "uphold"
 	donorInfo.ProviderID = os.Getenv("DONOR_WALLET_CARD_ID")
 	{
@@ -339,7 +339,7 @@ func fundWallet(t *testing.T, destWallet *uphold.Wallet, amount decimal.Decimal)
 }
 
 func generateWallet(t *testing.T) *uphold.Wallet {
-	var info wallet.Info
+	var info walletutils.Info
 	info.ID = uuid.NewV4().String()
 	info.Provider = "uphold"
 	info.ProviderID = ""
@@ -390,8 +390,8 @@ func (suite *ControllersTestSuite) TestAnonymousCardE2E() {
 	service := &Service{
 		datastore: pg,
 		cbClient:  mockCB,
-		wallet: walletservice.Service{
-			Datastore: pg,
+		wallet: wallet.Service{
+			Datastore: wallet.Datastore(&wallet.Postgres{Postgres: pg.Postgres}),
 		},
 	}
 

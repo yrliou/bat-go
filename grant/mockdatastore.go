@@ -8,7 +8,7 @@ import (
 	reflect "reflect"
 
 	promotion "github.com/brave-intl/bat-go/promotion"
-	wallet "github.com/brave-intl/bat-go/wallet"
+	wallet "github.com/brave-intl/bat-go/utils/wallet"
 	gomock "github.com/golang/mock/gomock"
 	go_uuid "github.com/satori/go.uuid"
 )

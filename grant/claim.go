@@ -5,7 +5,7 @@ import (
 
 	promotion "github.com/brave-intl/bat-go/promotion"
 	errorutils "github.com/brave-intl/bat-go/utils/errors"
-	"github.com/brave-intl/bat-go/wallet"
+	"github.com/brave-intl/bat-go/utils/wallet"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
 	uuid "github.com/satori/go.uuid"

@@ -13,7 +13,6 @@ import (
 
 	"github.com/brave-intl/bat-go/datastore/grantserver"
 	"github.com/brave-intl/bat-go/utils/jsonutils"
-	walletservice "github.com/brave-intl/bat-go/wallet/service"
 
 	// needed for magic migration
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -21,7 +20,6 @@ import (
 
 // Datastore abstracts over the underlying datastore
 type Datastore interface {
-	walletservice.Datastore
 	// CreateOrder is used to create an order for payments
 	CreateOrder(totalPrice decimal.Decimal, merchantID string, status string, currency string, location string, orderItems []OrderItem) (*Order, error)
 	// GetOrder by ID

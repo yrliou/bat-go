@@ -26,7 +26,7 @@ import (
 	"github.com/brave-intl/bat-go/utils/pindialer"
 	"github.com/brave-intl/bat-go/utils/requestutils"
 	"github.com/brave-intl/bat-go/utils/validators"
-	"github.com/brave-intl/bat-go/wallet"
+	"github.com/brave-intl/bat-go/utils/wallet"
 	uuid "github.com/satori/go.uuid"
 	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
@@ -142,7 +142,7 @@ func submit(req *http.Request) ([]byte, *http.Response, error) {
 		panic(err)
 	}
 	log.WithFields(log.Fields{
-		"path": "github.com/brave-intl/bat-go/wallet/provider/uphold",
+		"path": "github.com/brave-intl/bat-go/utils/wallet/provider/uphold",
 		"type": "http.Request",
 	}).Debug(string(dump))
 
@@ -152,7 +152,7 @@ func submit(req *http.Request) ([]byte, *http.Response, error) {
 	}
 
 	log.WithFields(log.Fields{
-		"path": "github.com/brave-intl/bat-go/wallet/provider/uphold",
+		"path": "github.com/brave-intl/bat-go/utils/wallet/provider/uphold",
 		"type": "http.Response.StatusCode",
 	}).Debug(resp.StatusCode)
 
@@ -163,7 +163,7 @@ func submit(req *http.Request) ([]byte, *http.Response, error) {
 	}
 
 	log.WithFields(log.Fields{
-		"path": "github.com/brave-intl/bat-go/wallet/provider/uphold",
+		"path": "github.com/brave-intl/bat-go/utils/wallet/provider/uphold",
 		"type": "http.Response.Header",
 	}).Debug(string(jsonHeaders))
 
@@ -172,7 +172,7 @@ func submit(req *http.Request) ([]byte, *http.Response, error) {
 		return nil, resp, err
 	}
 	log.WithFields(log.Fields{
-		"path": "github.com/brave-intl/bat-go/wallet/provider/uphold",
+		"path": "github.com/brave-intl/bat-go/utils/wallet/provider/uphold",
 		"type": "http.Response.Body",
 	}).Debug(string(body))
 
@@ -517,7 +517,7 @@ func (w *Wallet) VerifyTransaction(transactionB64 string) (*wallet.TransactionIn
 }
 
 // VerifyAnonCardTransaction calls VerifyTransaction and checks the currency, amount and destination
-func (w *Wallet) VerifyAnonCardTransaction(transactionB64 string) (*wallet.TransactionInfo, error) {
+func (w *Wallet) VerifyAnonCardTransaction(transactionB64 string, requiredDestination string) (*wallet.TransactionInfo, error) {
 	txInfo, err := w.VerifyTransaction(transactionB64)
 	if err != nil {
 		return nil, err
@@ -528,16 +528,21 @@ func (w *Wallet) VerifyAnonCardTransaction(transactionB64 string) (*wallet.Trans
 	if txInfo.Probi.LessThan(decimal.Zero) {
 		return nil, errors.New("anon card transaction cannot be for negative BAT")
 	}
-	if txInfo.Destination != SettlementDestination {
+	if requiredDestination != "" && txInfo.Destination != requiredDestination {
 		return nil, errors.New("anon card transactions must have settlement as their destination")
 	}
 
 	return txInfo, nil
 }
 
+type upholdTransactionResponseDestinationNodeUser struct {
+	ID string `json:"id"`
+}
+
 type upholdTransactionResponseDestinationNode struct {
-	Type string `json:"type"`
-	ID   string `json:"id"`
+	Type string                                       `json:"type"`
+	ID   string                                       `json:"id"`
+	User upholdTransactionResponseDestinationNodeUser `json:"user"`
 }
 
 type upholdTransactionResponseDestination struct {
@@ -572,10 +577,13 @@ func (resp upholdTransactionResponse) ToTransactionInfo() *wallet.TransactionInf
 		tmp := *resp.Denomination.Currency
 		txInfo.AltCurrency = &tmp
 	}
-	if len(resp.Destination.CardID) > 0 {
-		txInfo.Destination = resp.Destination.CardID
-	} else if len(resp.Destination.Node.ID) > 0 {
-		txInfo.Destination = resp.Destination.Node.ID
+	destination := resp.Destination
+	destinationNode := destination.Node
+	txInfo.UserID = destinationNode.User.ID
+	if len(destination.CardID) > 0 {
+		txInfo.Destination = destination.CardID
+	} else if len(destinationNode.ID) > 0 {
+		txInfo.Destination = destinationNode.ID
 	}
 
 	if len(resp.Origin.CardID) > 0 {
@@ -590,10 +598,10 @@ func (resp upholdTransactionResponse) ToTransactionInfo() *wallet.TransactionInf
 		log.Fatalf("%s is not a valid ISO 8601 datetime\n", resp.CreatedAt)
 	}
 
-	txInfo.DestCurrency = resp.Destination.Currency
-	txInfo.DestAmount = resp.Destination.Amount
-	txInfo.TransferFee = resp.Destination.TransferFee
-	txInfo.ExchangeFee = resp.Destination.ExchangeFee
+	txInfo.DestCurrency = destination.Currency
+	txInfo.DestAmount = destination.Amount
+	txInfo.TransferFee = destination.TransferFee
+	txInfo.ExchangeFee = destination.ExchangeFee
 	txInfo.Status = resp.Status
 	if txInfo.Status == "pending" {
 		txInfo.ValidUntil = time.Now().UTC().Add(time.Duration(resp.Params.TTL) * time.Millisecond)
@@ -725,7 +733,7 @@ func (w *Wallet) ListTransactions(limit int, startDate time.Time) ([]wallet.Tran
 			body, resp, err = submit(req)
 			if nerr, ok := err.(net.Error); ok && nerr.Temporary() {
 				log.WithFields(log.Fields{
-					"path": "github.com/brave-intl/bat-go/wallet/provider/uphold",
+					"path": "github.com/brave-intl/bat-go/utils/wallet/provider/uphold",
 					"type": "net.Error",
 				}).Debug("Temporary error occurred, retrying")
 				continue
@@ -830,5 +838,32 @@ func (w *Wallet) CreateCardAddress(network string) (string, error) {
 		return "", err
 	}
 	return details.ID, nil
+}
 
+// GenerateWallet creates a new uphold wallet
+func GenerateWallet(name string) (*Wallet, error) {
+	var info wallet.Info
+	info.ID = uuid.NewV4().String()
+	info.Provider = "uphold"
+	info.ProviderID = ""
+	{
+		tmp := altcurrency.BAT
+		info.AltCurrency = &tmp
+	}
+
+	publicKey, privateKey, err := httpsignature.GenerateEd25519Key(nil)
+	if err != nil {
+		return nil, err
+	}
+	info.PublicKey = hex.EncodeToString(publicKey)
+	newWallet := &Wallet{
+		Info:    info,
+		PrivKey: privateKey,
+		PubKey:  publicKey,
+	}
+	err = newWallet.Register(name)
+	if err != nil {
+		return nil, err
+	}
+	return newWallet, nil
 }

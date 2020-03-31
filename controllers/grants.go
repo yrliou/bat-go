@@ -13,7 +13,7 @@ import (
 	"github.com/brave-intl/bat-go/utils/handlers"
 	"github.com/brave-intl/bat-go/utils/logging"
 	"github.com/brave-intl/bat-go/utils/requestutils"
-	"github.com/brave-intl/bat-go/wallet"
+	"github.com/brave-intl/bat-go/utils/wallet"
 	"github.com/go-chi/chi"
 	chiware "github.com/go-chi/chi/middleware"
 	uuid "github.com/satori/go.uuid"

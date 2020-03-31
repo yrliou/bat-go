@@ -9,8 +9,8 @@ import (
 	errorutils "github.com/brave-intl/bat-go/utils/errors"
 	"github.com/brave-intl/bat-go/utils/httpsignature"
 	srv "github.com/brave-intl/bat-go/utils/service"
-	"github.com/brave-intl/bat-go/wallet"
-	"github.com/brave-intl/bat-go/wallet/provider/uphold"
+	"github.com/brave-intl/bat-go/utils/wallet"
+	"github.com/brave-intl/bat-go/utils/wallet/provider/uphold"
 	"github.com/getsentry/sentry-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/crypto/ed25519"
@@ -62,6 +62,36 @@ func (s *Service) Jobs() []srv.Job {
 	return s.jobs
 }
 
+// CreateGrantWallet creates a wallet for transferring grants bat
+func CreateGrantWallet() (*uphold.Wallet, error) {
+	var info wallet.Info
+	info.Provider = "uphold"
+	info.ProviderID = grantWalletCardID
+	{
+		tmp := altcurrency.BAT
+		info.AltCurrency = &tmp
+	}
+
+	var pubKey httpsignature.Ed25519PubKey
+	var privKey ed25519.PrivateKey
+	var err error
+
+	pubKey, err = hex.DecodeString(grantWalletPublicKeyHex)
+	if err != nil {
+		return nil, errorutils.Wrap(err, "grantWalletPublicKeyHex is invalid")
+	}
+	privKey, err = hex.DecodeString(grantWalletPrivateKeyHex)
+	if err != nil {
+		return nil, errorutils.Wrap(err, "grantWalletPrivateKeyHex is invalid")
+	}
+
+	grantWallet, err := uphold.New(info, privKey, pubKey)
+	if err != nil {
+		return nil, err
+	}
+	return grantWallet, nil
+}
+
 // InitService initializes the grant service
 func InitService(datastore Datastore, roDatastore ReadOnlyDatastore) (*Service, error) {
 	gs := &Service{
@@ -86,31 +116,11 @@ func InitService(datastore Datastore, roDatastore ReadOnlyDatastore) (*Service, 
 	}
 
 	if len(grantWalletCardID) > 0 {
-		var info wallet.Info
-		info.Provider = "uphold"
-		info.ProviderID = grantWalletCardID
-		{
-			tmp := altcurrency.BAT
-			info.AltCurrency = &tmp
-		}
-
-		var pubKey httpsignature.Ed25519PubKey
-		var privKey ed25519.PrivateKey
-		var err error
-
-		pubKey, err = hex.DecodeString(grantWalletPublicKeyHex)
-		if err != nil {
-			return nil, errorutils.Wrap(err, "grantWalletPublicKeyHex is invalid")
-		}
-		privKey, err = hex.DecodeString(grantWalletPrivateKeyHex)
-		if err != nil {
-			return nil, errorutils.Wrap(err, "grantWalletPrivateKeyHex is invalid")
-		}
-
-		grantWallet, err = uphold.New(info, privKey, pubKey)
+		wallet, err := CreateGrantWallet()
 		if err != nil {
 			return nil, err
 		}
+		grantWallet = wallet
 	} else if os.Getenv("ENV") != localEnv {
 		return nil, errors.New("GRANT_WALLET_CARD_ID must be set in production")
 	}

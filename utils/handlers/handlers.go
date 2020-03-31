@@ -42,7 +42,7 @@ func (e AppError) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // WrapError with an additional message as an AppError
 func WrapError(err error, msg string, passedCode int) *AppError {
 	// FIXME err should probably be first
-	appErr, ok := err.(AppError)
+	appErr, ok := err.(*AppError)
 	if !ok {
 		code := passedCode
 		if code == 0 {

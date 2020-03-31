@@ -18,7 +18,7 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
-const currentMigrationVersion = 12
+const currentMigrationVersion = 13
 
 var (
 	// dbInstanceClassToMaxConn -  https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/AuroraPostgreSQL.Managing.html
@@ -137,11 +137,17 @@ func NewPostgres(databaseURL string, performMigration bool, dbStatsPrefix ...str
 	return pg, nil
 }
 
-// RollbackTx rolls back a transaction (useful with defer)
-func (pg *Postgres) RollbackTx(tx *sqlx.Tx) {
+// RollbackTxAndHandle rolls back a transaction
+func (pg *Postgres) RollbackTxAndHandle(tx *sqlx.Tx) error {
 	err := tx.Rollback()
 	if err != nil && err != sql.ErrTxDone {
-		sentry.CaptureMessage(err.Error())
+		sentry.CaptureException(err)
 		sentry.Flush(time.Second * 2)
 	}
+	return err
+}
+
+// RollbackTx rolls back a transaction (useful with defer)
+func (pg *Postgres) RollbackTx(tx *sqlx.Tx) {
+	_ = pg.RollbackTxAndHandle(tx)
 }

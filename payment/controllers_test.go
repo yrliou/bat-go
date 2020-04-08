@@ -30,7 +30,6 @@ import (
 	kafka "github.com/segmentio/kafka-go"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/suite"
-	"golang.org/x/crypto/ed25519"
 )
 
 type ControllersTestSuite struct {
@@ -400,7 +399,7 @@ func (suite *ControllersTestSuite) TestAnonymousCardE2E() {
 	err = pg.UpsertWallet(&userWallet.Info)
 	suite.Require().NoError(err)
 
-	fundWallet(suite.T(), userWallet, order.TotalPrice)
+	uphold.FundWallet(userWallet, order.TotalPrice)
 	txn, err := userWallet.PrepareTransaction(altcurrency.BAT, altcurrency.BAT.ToProbi(order.TotalPrice), uphold.SettlementDestination, "bat-go:grant-server.TestAC")
 	suite.Require().NoError(err)
 

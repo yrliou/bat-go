@@ -71,9 +71,25 @@ func (suite *WalletControllersTestSuite) CleanDB() {
 		suite.Require().NoError(err, "Failed to get clean table")
 	}
 }
+
 func noUUID() *uuid.UUID {
 	return nil
 }
+
+func (suite *WalletControllersTestSuite) FundWallet(service *Service, w *uphold.Wallet, probi decimal.Decimal) decimal.Decimal {
+	total, err := uphold.FundWallet(w, probi)
+	suite.Require().NoError(err, "an error should not be generated from funding the wallet")
+	return total
+}
+
+func (suite *WalletControllersTestSuite) CheckBalance(w *uphold.Wallet, expect decimal.Decimal) {
+	balances, err := w.GetBalance(true)
+	suite.Require().NoError(err, "an error should not be generated from checking the wallet balance")
+	totalProbi := altcurrency.BAT.FromProbi(balances.TotalProbi)
+	errMessage := fmt.Sprintf("got an unexpected balance. expected: %s, got %s", expect.String(), totalProbi.String())
+	suite.Require().True(expect.Equal(totalProbi), errMessage)
+}
+
 func (suite *WalletControllersTestSuite) TestLinkWallet() {
 	pg, err := NewPostgres("", false)
 	suite.Require().NoError(err, "Failed to get postgres connection")
@@ -86,37 +102,51 @@ func (suite *WalletControllersTestSuite) TestLinkWallet() {
 	w2 := suite.NewWallet(service, "uphold")
 	w3 := suite.NewWallet(service, "uphold")
 	w4 := suite.NewWallet(service, "uphold")
+	bat1 := decimal.NewFromFloat(1)
+
+	suite.FundWallet(service, w1, bat1)
+	suite.FundWallet(service, w2, bat1)
+	suite.FundWallet(service, w3, bat1)
+	suite.FundWallet(service, w4, bat1)
 	settlement := os.Getenv("BAT_SETTLEMENT_ADDRESS")
 
-	upholdWallet1, ok := w1.(*uphold.Wallet)
-	suite.Require().True(ok, "conversion to interface must succeed")
-	upholdWallet2, ok := w2.(*uphold.Wallet)
-	suite.Require().True(ok, "conversion to interface must succeed")
-	upholdWallet3, ok := w3.(*uphold.Wallet)
-	suite.Require().True(ok, "conversion to interface must succeed")
-	upholdWallet4, ok := w4.(*uphold.Wallet)
-	suite.Require().True(ok, "conversion to interface must succeed")
-
-	anonCard1ID, err := upholdWallet1.CreateCardAddress("anonymous")
+	anonCard1ID, err := w1.CreateCardAddress("anonymous")
 	suite.Require().NoError(err, "create anon card must not fail")
 	anonCard1UUID := uuid.Must(uuid.FromString(anonCard1ID))
 
-	anonCard2ID, err := upholdWallet2.CreateCardAddress("anonymous")
+	anonCard2ID, err := w2.CreateCardAddress("anonymous")
 	suite.Require().NoError(err, "create anon card must not fail")
 	anonCard2UUID := uuid.Must(uuid.FromString(anonCard2ID))
 
-	w1ProviderID := upholdWallet1.GetWalletInfo().ProviderID
-	w2ProviderID := upholdWallet2.GetWalletInfo().ProviderID
-	w3ProviderID := upholdWallet3.GetWalletInfo().ProviderID
+	w1ProviderID := w1.GetWalletInfo().ProviderID
+	w2ProviderID := w2.GetWalletInfo().ProviderID
+	w3ProviderID := w3.GetWalletInfo().ProviderID
 
-	amount := decimal.NewFromFloat(0)
+	zero := decimal.NewFromFloat(0)
 
-	suite.claimCard(service, upholdWallet1, settlement, http.StatusOK, amount, noUUID())
-	suite.claimCard(service, upholdWallet2, w1ProviderID, http.StatusOK, amount, &anonCard1UUID)
-	suite.claimCard(service, upholdWallet2, w1ProviderID, http.StatusOK, amount, noUUID())
-	suite.claimCard(service, upholdWallet3, w2ProviderID, http.StatusOK, amount, noUUID())
-	suite.claimCard(service, upholdWallet4, w3ProviderID, http.StatusConflict, amount, noUUID())
-	suite.claimCard(service, upholdWallet3, settlement, http.StatusOK, amount, &anonCard2UUID)
+	suite.CheckBalance(w1, bat1)
+	suite.claimCard(service, w1, settlement, http.StatusOK, bat1, noUUID())
+	suite.CheckBalance(w1, zero)
+
+	suite.CheckBalance(w2, bat1)
+	suite.claimCard(service, w2, w1ProviderID, http.StatusOK, zero, &anonCard1UUID)
+	suite.CheckBalance(w2, bat1)
+
+	suite.CheckBalance(w2, bat1)
+	suite.claimCard(service, w2, w1ProviderID, http.StatusOK, bat1, noUUID())
+	suite.CheckBalance(w2, zero)
+
+	suite.CheckBalance(w3, bat1)
+	suite.claimCard(service, w3, w2ProviderID, http.StatusOK, bat1, noUUID())
+	suite.CheckBalance(w3, zero)
+
+	suite.CheckBalance(w4, bat1)
+	suite.claimCard(service, w4, w3ProviderID, http.StatusConflict, bat1, noUUID())
+	suite.CheckBalance(w4, bat1)
+
+	suite.CheckBalance(w3, zero)
+	suite.claimCard(service, w3, settlement, http.StatusOK, zero, &anonCard2UUID)
+	suite.CheckBalance(w3, zero)
 }
 
 func (suite *WalletControllersTestSuite) claimCard(
@@ -127,7 +157,7 @@ func (suite *WalletControllersTestSuite) claimCard(
 	amount decimal.Decimal,
 	anonymousAddress *uuid.UUID,
 ) (*walletutils.Info, string) {
-	signedTx, err := w.PrepareTransaction(*w.AltCurrency, amount, destination, "")
+	signedTx, err := w.PrepareTransaction(*w.AltCurrency, altcurrency.BAT.ToProbi(amount), destination, "")
 	suite.Require().NoError(err, "transaction must be signed client side")
 	reqBody := LinkWalletRequest{
 		SignedTx:         signedTx,
@@ -159,7 +189,7 @@ func (suite *WalletControllersTestSuite) createBody(
 	return `{"provider":"` + provider + `","publicKey":"` + publicKey + `","signedTx":"` + tx + `"}`
 }
 
-func (suite *WalletControllersTestSuite) NewWallet(service *Service, provider string) walletutils.Wallet {
+func (suite *WalletControllersTestSuite) NewWallet(service *Service, provider string) *uphold.Wallet {
 	publicKey, privKey, err := httpsignature.GenerateEd25519Key(nil)
 	publicKeyString := hex.EncodeToString(publicKey)
 

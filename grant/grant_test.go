@@ -24,6 +24,10 @@ func TestConsume(t *testing.T) {
 
 	uphold.SettlementDestination = "foo@bar.com"
 
+	defer func() {
+		uphold.SettlementDestination = os.Getenv("BAT_SETTLEMENT_ADDRESS")
+	}()
+
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 

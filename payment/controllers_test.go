@@ -296,48 +296,6 @@ func (suite *ControllersTestSuite) TestGetTransactions() {
 	suite.Assert().Equal(order.ID, transactions[0].OrderID)
 }
 
-func fundWallet(t *testing.T, destWallet *uphold.Wallet, amount decimal.Decimal) {
-	var donorInfo walletutils.Info
-	donorInfo.Provider = "uphold"
-	donorInfo.ProviderID = os.Getenv("DONOR_WALLET_CARD_ID")
-	{
-		tmp := altcurrency.BAT
-		donorInfo.AltCurrency = &tmp
-	}
-
-	donorWalletPublicKeyHex := os.Getenv("DONOR_WALLET_PUBLIC_KEY")
-	donorWalletPrivateKeyHex := os.Getenv("DONOR_WALLET_PRIVATE_KEY")
-	var donorPublicKey httpsignature.Ed25519PubKey
-	var donorPrivateKey ed25519.PrivateKey
-	donorPublicKey, err := hex.DecodeString(donorWalletPublicKeyHex)
-	if err != nil {
-		t.Fatal(err)
-	}
-	donorPrivateKey, err = hex.DecodeString(donorWalletPrivateKeyHex)
-	if err != nil {
-		t.Fatal(err)
-	}
-	donorWallet := &uphold.Wallet{Info: donorInfo, PrivKey: donorPrivateKey, PubKey: donorPublicKey}
-
-	if len(donorWallet.ID) > 0 {
-		t.Fatal("FIXME")
-	}
-
-	_, err = donorWallet.Transfer(altcurrency.BAT, altcurrency.BAT.ToProbi(amount), destWallet.Info.ProviderID)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	balance, err := destWallet.GetBalance(true)
-	if err != nil {
-		t.Error(err)
-	}
-
-	if balance.TotalProbi.Equals(decimal.Zero) {
-		t.Error("Submit with confirm should result in a balance.")
-	}
-}
-
 func generateWallet(t *testing.T) *uphold.Wallet {
 	var info walletutils.Info
 	info.ID = uuid.NewV4().String()

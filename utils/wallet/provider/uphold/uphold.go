@@ -840,30 +840,51 @@ func (w *Wallet) CreateCardAddress(network string) (string, error) {
 	return details.ID, nil
 }
 
-// GenerateWallet creates a new uphold wallet
-func GenerateWallet(name string) (*Wallet, error) {
-	var info wallet.Info
-	info.ID = uuid.NewV4().String()
-	info.Provider = "uphold"
-	info.ProviderID = ""
+// FundWallet should fund a given wallet from the donor card
+func FundWallet(destWallet *Wallet, amount decimal.Decimal) (decimal.Decimal, error) {
+	var donorInfo wallet.Info
+	donorInfo.Provider = "uphold"
+	donorInfo.ProviderID = os.Getenv("DONOR_WALLET_CARD_ID")
 	{
 		tmp := altcurrency.BAT
-		info.AltCurrency = &tmp
+		donorInfo.AltCurrency = &tmp
+	}
+	zero := decimal.NewFromFloat(0)
+	donorWalletPublicKeyHex := os.Getenv("DONOR_WALLET_PUBLIC_KEY")
+	donorWalletPrivateKeyHex := os.Getenv("DONOR_WALLET_PRIVATE_KEY")
+	var donorPublicKey httpsignature.Ed25519PubKey
+	var donorPrivateKey ed25519.PrivateKey
+	donorPublicKey, err := hex.DecodeString(donorWalletPublicKeyHex)
+	if err != nil {
+		return zero, err
+	}
+	donorPrivateKey, err = hex.DecodeString(donorWalletPrivateKeyHex)
+	if err != nil {
+		return zero, err
+	}
+	donorWallet := &Wallet{Info: donorInfo, PrivKey: donorPrivateKey, PubKey: donorPublicKey}
+
+	if len(donorWallet.ID) > 0 {
+		return zero, errors.New("donor wallet does not have an ID")
 	}
 
-	publicKey, privateKey, err := httpsignature.GenerateEd25519Key(nil)
+	balanceBefore, err := destWallet.GetBalance(true)
 	if err != nil {
-		return nil, err
+		return zero, err
 	}
-	info.PublicKey = hex.EncodeToString(publicKey)
-	newWallet := &Wallet{
-		Info:    info,
-		PrivKey: privateKey,
-		PubKey:  publicKey,
-	}
-	err = newWallet.Register(name)
+
+	_, err = donorWallet.Transfer(altcurrency.BAT, altcurrency.BAT.ToProbi(amount), destWallet.Info.ProviderID)
 	if err != nil {
-		return nil, err
+		return zero, err
 	}
-	return newWallet, nil
+
+	balance, err := destWallet.GetBalance(true)
+	if err != nil {
+		return zero, err
+	}
+
+	if !balance.TotalProbi.GreaterThan(balanceBefore.TotalProbi) {
+		return balance.TotalProbi, errors.New("submit with confirm should result in an increased balance")
+	}
+	return balance.TotalProbi, nil
 }

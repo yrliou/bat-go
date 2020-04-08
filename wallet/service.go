@@ -107,7 +107,7 @@ func (service *Service) LinkWallet(
 	}
 	if tx.UserID == "" {
 		err := errors.New("user id not provided")
-		return handlers.WrapError(err, "unable to begin transaction", http.StatusBadRequest)
+		return handlers.WrapError(err, "unable to link wallet", http.StatusBadRequest)
 	}
 	providerLinkingID := uuid.NewV5(walletClaimNamespace, tx.UserID)
 	if info.ProviderLinkingID != nil {
@@ -135,7 +135,7 @@ func (service *Service) LinkWallet(
 	if decimal.NewFromFloat(0).LessThan(tx.Probi) {
 		_, err := service.SubmitCommitableAnonCardTransaction(ctx, info, transaction, "", true)
 		if err != nil {
-			return handlers.WrapError(err, "unable to complete transaction", http.StatusBadRequest)
+			return handlers.WrapError(err, "unable to transfer tokens", http.StatusBadRequest)
 		}
 	}
 	return nil

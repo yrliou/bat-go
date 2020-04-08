@@ -8,7 +8,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"os"
 
 	"github.com/asaskevich/govalidator"
 	"github.com/brave-intl/bat-go/middleware"
@@ -25,12 +24,7 @@ import (
 // Router for suggestions endpoints
 func Router(service *Service) chi.Router {
 	r := chi.NewRouter()
-	PostLinkWalletCompatHandler := middleware.HTTPSignedOnly(service)(middleware.InstrumentHandler("PostLinkWalletCompat", PostLinkWalletCompat(service)))
-	if os.Getenv("ENV") != "local" {
-		// only link from ledger
-		PostLinkWalletCompatHandler = middleware.SimpleTokenAuthorizedOnly(PostLinkWalletCompatHandler)
-	}
-	r.Method("POST", "/{paymentId}/claim", PostLinkWalletCompatHandler)
+	r.Method("POST", "/{paymentId}/claim", middleware.HTTPSignedOnly(service)(middleware.InstrumentHandler("PostLinkWalletCompat", PostLinkWalletCompat(service))))
 	r.Method("GET", "/{paymentId}", middleware.InstrumentHandler("GetWallet", GetWallet(service)))
 	r.Method("POST", "/", middleware.HTTPSignedOnly(service)(middleware.InstrumentHandler("PostCreateWallet", PostCreateWallet(service))))
 	return r

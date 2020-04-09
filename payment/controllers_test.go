@@ -399,7 +399,9 @@ func (suite *ControllersTestSuite) TestAnonymousCardE2E() {
 	err = pg.UpsertWallet(&userWallet.Info)
 	suite.Require().NoError(err)
 
-	uphold.FundWallet(userWallet, order.TotalPrice)
+	balanceBefore, err := userWallet.GetBalance(true)
+	balanceAfter, err := uphold.FundWallet(userWallet, order.TotalPrice)
+	suite.Require().True(balanceAfter.GreaterThan(balanceBefore.TotalProbi), "balance should have increased")
 	txn, err := userWallet.PrepareTransaction(altcurrency.BAT, altcurrency.BAT.ToProbi(order.TotalPrice), uphold.SettlementDestination, "bat-go:grant-server.TestAC")
 	suite.Require().NoError(err)
 

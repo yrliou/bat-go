@@ -76,9 +76,11 @@ func noUUID() *uuid.UUID {
 	return nil
 }
 
-func (suite *WalletControllersTestSuite) FundWallet(service *Service, w *uphold.Wallet, probi decimal.Decimal) decimal.Decimal {
+func (suite *WalletControllersTestSuite) FundWallet(w *uphold.Wallet, probi decimal.Decimal) decimal.Decimal {
+	balanceBefore, err := w.GetBalance(true)
 	total, err := uphold.FundWallet(w, probi)
 	suite.Require().NoError(err, "an error should not be generated from funding the wallet")
+	suite.Require().True(total.GreaterThan(balanceBefore.TotalProbi), "submit with confirm should result in an increased balance")
 	return total
 }
 
@@ -104,10 +106,10 @@ func (suite *WalletControllersTestSuite) TestLinkWallet() {
 	w4 := suite.NewWallet(service, "uphold")
 	bat1 := decimal.NewFromFloat(1)
 
-	suite.FundWallet(service, w1, bat1)
-	suite.FundWallet(service, w2, bat1)
-	suite.FundWallet(service, w3, bat1)
-	suite.FundWallet(service, w4, bat1)
+	suite.FundWallet(w1, bat1)
+	suite.FundWallet(w2, bat1)
+	suite.FundWallet(w3, bat1)
+	suite.FundWallet(w4, bat1)
 	settlement := os.Getenv("BAT_SETTLEMENT_ADDRESS")
 
 	anonCard1ID, err := w1.CreateCardAddress("anonymous")

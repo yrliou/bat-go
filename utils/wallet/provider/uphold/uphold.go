@@ -868,11 +868,6 @@ func FundWallet(destWallet *Wallet, amount decimal.Decimal) (decimal.Decimal, er
 		return zero, errors.New("donor wallet does not have an ID")
 	}
 
-	balanceBefore, err := destWallet.GetBalance(true)
-	if err != nil {
-		return zero, err
-	}
-
 	_, err = donorWallet.Transfer(altcurrency.BAT, altcurrency.BAT.ToProbi(amount), destWallet.Info.ProviderID)
 	if err != nil {
 		return zero, err
@@ -883,8 +878,5 @@ func FundWallet(destWallet *Wallet, amount decimal.Decimal) (decimal.Decimal, er
 		return zero, err
 	}
 
-	if !balance.TotalProbi.GreaterThan(balanceBefore.TotalProbi) {
-		return balance.TotalProbi, errors.New("submit with confirm should result in an increased balance")
-	}
 	return balance.TotalProbi, nil
 }

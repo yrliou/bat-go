@@ -97,9 +97,8 @@ type GetWalletResponse struct {
 
 // PostCreateWalletRequest has possible inputs for the new wallet
 type PostCreateWalletRequest struct {
-	Provider  string `json:"provider" valid:"in(brave|uphold)"`
-	PublicKey string `json:"publicKey" valid:"required"`
-	SignedTx  string `json:"signedTx" valid:"-"`
+	Provider string `json:"provider" valid:"in(brave|uphold)"`
+	SignedTx string `json:"signedTx" valid:"-"`
 }
 
 // PostCreateWallet creates a wallet
@@ -125,13 +124,8 @@ func PostCreateWallet(service *Service) handlers.AppHandler {
 		if err != nil {
 			return handlers.WrapError(err, "unable to look up http signature info", http.StatusBadRequest)
 		}
-		if req.PublicKey != publicKey {
-			return handlers.ValidationError("request signature", map[string]string{
-				"publicKey": "publicKey must match signature",
-			})
-		}
 
-		info, err := CreateWallet(req)
+		info, err := CreateWallet(req, publicKey)
 		if err != nil {
 			return handlers.WrapError(err, "unable to save wallet", http.StatusServiceUnavailable)
 		}
@@ -172,9 +166,8 @@ func GetWallet(service *Service) handlers.AppHandler {
 }
 
 // CreateWallet creates a new set of wallet info
-func CreateWallet(req PostCreateWalletRequest) (walletutils.Info, error) {
+func CreateWallet(req PostCreateWalletRequest, publicKey string) (walletutils.Info, error) {
 	provider := req.Provider // client
-	publicKey := req.PublicKey
 
 	var info walletutils.Info
 	info.ID = uuid.NewV4().String()

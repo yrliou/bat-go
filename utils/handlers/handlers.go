@@ -45,7 +45,7 @@ func WrapError(err error, msg string, passedCode int) *AppError {
 	// FIXME err should probably be first
 	// appErr, ok := err.(*AppError)
 	var appErr *AppError
-	if errors.As(err, &appErr) {
+	if !errors.As(err, &appErr) {
 		code := passedCode
 		if code == 0 {
 			code = http.StatusBadRequest

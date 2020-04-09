@@ -188,7 +188,7 @@ func (suite *WalletControllersTestSuite) createBody(
 	publicKey string,
 	tx string,
 ) string {
-	return `{"provider":"` + provider + `","publicKey":"` + publicKey + `","signedTx":"` + tx + `"}`
+	return `{"provider":"` + provider + `","signedTx":"` + tx + `"}`
 }
 
 func (suite *WalletControllersTestSuite) NewWallet(service *Service, provider string) *uphold.Wallet {
@@ -235,9 +235,8 @@ func (suite *WalletControllersTestSuite) TestPostCreateWallet() {
 	}
 
 	publicKey, privKey, err := httpsignature.GenerateEd25519Key(nil)
-	publicKeyString := hex.EncodeToString(publicKey)
-	createBody := func(provider string, publicKey string) string {
-		return `{"provider":"` + provider + `","publicKey":"` + publicKey + `"}`
+	createBody := func(provider string) string {
+		return `{"provider":"` + provider + `"}`
 	}
 	badJSONBodyParse := suite.createWallet(
 		service,
@@ -254,7 +253,7 @@ func (suite *WalletControllersTestSuite) TestPostCreateWallet() {
 
 	badFieldResponse := suite.createWallet(
 		service,
-		createBody("notaprovider", publicKeyString),
+		createBody("notaprovider"),
 		http.StatusBadRequest,
 		publicKey,
 		privKey,
@@ -274,7 +273,7 @@ func (suite *WalletControllersTestSuite) TestPostCreateWallet() {
 	// fail because of lacking signature presence
 	notSignedResponse := suite.createWallet(
 		service,
-		createBody("brave", publicKeyString),
+		createBody("brave"),
 		http.StatusBadRequest,
 		publicKey,
 		privKey,
@@ -282,27 +281,9 @@ func (suite *WalletControllersTestSuite) TestPostCreateWallet() {
 	)
 	suite.Assert().Equal(`Bad Request
 `, notSignedResponse, "not signed creation requests should fail")
-	// body public key does not match signature public key
-	notMatchingResponse := suite.createWallet(
-		service,
-		createBody("brave", uuid.NewV4().String()),
-		http.StatusBadRequest,
-		publicKey,
-		privKey,
-		true,
-	)
-	suite.Assert().JSONEq(`{
-		"message": "Error validating request signature",
-		"code": 400,
-		"data": {
-			"validationErrors": {
-				"publicKey": "publicKey must match signature"
-			}
-		}
-	}`, notMatchingResponse, "body should not match keyId")
 	createResp := suite.createWallet(
 		service,
-		createBody("brave", publicKeyString),
+		createBody("brave"),
 		http.StatusCreated,
 		publicKey,
 		privKey,

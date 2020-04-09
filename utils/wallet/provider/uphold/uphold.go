@@ -14,6 +14,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -32,6 +33,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ed25519"
 )
+
+var path string
 
 // Wallet a wallet information using Uphold as the provider
 // A wallet corresponds to a single Uphold "card"
@@ -90,6 +93,7 @@ func init() {
 				DialTLS: pindialer.MakeDialer(upholdCertFingerprint),
 			}, "uphold"),
 	}
+	_, path, _, _ = runtime.Caller(0)
 }
 
 // TODO add context?
@@ -142,7 +146,7 @@ func submit(req *http.Request) ([]byte, *http.Response, error) {
 		panic(err)
 	}
 	log.WithFields(log.Fields{
-		"path": "github.com/brave-intl/bat-go/utils/wallet/provider/uphold",
+		"path": path,
 		"type": "http.Request",
 	}).Debug(string(dump))
 
@@ -152,7 +156,7 @@ func submit(req *http.Request) ([]byte, *http.Response, error) {
 	}
 
 	log.WithFields(log.Fields{
-		"path": "github.com/brave-intl/bat-go/utils/wallet/provider/uphold",
+		"path": path,
 		"type": "http.Response.StatusCode",
 	}).Debug(resp.StatusCode)
 
@@ -163,7 +167,7 @@ func submit(req *http.Request) ([]byte, *http.Response, error) {
 	}
 
 	log.WithFields(log.Fields{
-		"path": "github.com/brave-intl/bat-go/utils/wallet/provider/uphold",
+		"path": path,
 		"type": "http.Response.Header",
 	}).Debug(string(jsonHeaders))
 
@@ -172,7 +176,7 @@ func submit(req *http.Request) ([]byte, *http.Response, error) {
 		return nil, resp, err
 	}
 	log.WithFields(log.Fields{
-		"path": "github.com/brave-intl/bat-go/utils/wallet/provider/uphold",
+		"path": path,
 		"type": "http.Response.Body",
 	}).Debug(string(body))
 
@@ -733,7 +737,7 @@ func (w *Wallet) ListTransactions(limit int, startDate time.Time) ([]wallet.Tran
 			body, resp, err = submit(req)
 			if nerr, ok := err.(net.Error); ok && nerr.Temporary() {
 				log.WithFields(log.Fields{
-					"path": "github.com/brave-intl/bat-go/utils/wallet/provider/uphold",
+					"path": path,
 					"type": "net.Error",
 				}).Debug("Temporary error occurred, retrying")
 				continue

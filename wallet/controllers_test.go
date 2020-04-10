@@ -247,7 +247,7 @@ func (suite *WalletControllersTestSuite) TestPostCreateWallet() {
 		true,
 	)
 	suite.Assert().JSONEq(`{
-		"message": "Error unmarshalling body: unexpected end of JSON input",
+		"message": "Error unmarshalling body: error unmarshalling body",
 		"code": 400
 	}`, badJSONBodyParse, "should fail when parsing json")
 

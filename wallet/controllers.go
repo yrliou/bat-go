@@ -4,9 +4,6 @@ import (
 	"context"
 	"crypto/ed25519"
 	"encoding/hex"
-	"encoding/json"
-	"io"
-	"io/ioutil"
 	"net/http"
 
 	"github.com/asaskevich/govalidator"
@@ -104,14 +101,8 @@ type PostCreateWalletRequest struct {
 // PostCreateWallet creates a wallet
 func PostCreateWallet(service *Service) handlers.AppHandler {
 	return handlers.AppHandler(func(w http.ResponseWriter, r *http.Request) *handlers.AppError {
-		limit := int64(1024 * 1024 * 10) // 10MiB
-		body, err := ioutil.ReadAll(io.LimitReader(r.Body, limit))
-		if err != nil {
-			return handlers.WrapError(err, "Error reading body", http.StatusBadRequest)
-		}
-
 		var req PostCreateWalletRequest
-		err = json.Unmarshal(body, &req)
+		err := requestutils.ReadJSON(r.Body, &req)
 		if err != nil {
 			return handlers.WrapError(err, "Error unmarshalling body", http.StatusBadRequest)
 		}
